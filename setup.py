@@ -8,12 +8,12 @@ from setuptools import setup
 
 setup(
     name='Flask-Squll',
-    version='0.0',
-    url='http://tbd/flask-squll/',
+    version='0.1',
+    url='https://github.com/thrisp/flask-squll',
     license='BSD',
-    author='Your Name',
-    author_email='your-email@example.com',
-    description='flask + sqlalchemy integration',
+    author='hurrata/thrisp',
+    author_email='blueblank@example.com',
+    description='flask + sqlalchemy integration minus legacy for older versions of flask(<0.9)/sqlalchemy(<0.7)',
     long_description=__doc__,
     py_modules=['flask_squll'],
     # if you would be using a package instead use packages instead
@@ -23,7 +23,10 @@ setup(
     include_package_data=True,
     platforms='any',
     install_requires=[
-        'Flask'
+        'setuptools',
+        'blinker',
+        'Flask >= 0.9',
+        'SQLAlchemy >= 0.7'
     ],
     classifiers=[
         'Environment :: Web Environment',

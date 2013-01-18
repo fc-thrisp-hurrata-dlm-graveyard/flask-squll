@@ -1,3 +1,4 @@
+from __future__ import with_statement, absolute_import
 from os import path
 import re
 from functools import wraps, partial
@@ -17,6 +18,7 @@ import sys
 from time import time
 from sqlalchemy.interfaces import ConnectionProxy
 from operator import itemgetter
+from sqlalchemy.event import listen
 
 connection_stack = _app_ctx_stack
 
@@ -41,7 +43,7 @@ def _include_sqlalchemy(obj):
                 setattr(obj, key, getattr(module, key))
     # Note: obj.Table does not attempt to be a SQLAlchemy Table class.
     obj.Table = _make_table(obj)
-    #obj.mapper = signalling_mapper \\ perhaps some addition to the mapper allowed 
+    #obj.mapper = sqlalchemy.orm.mapper()#signalling_mapper \\ perhaps some addition to the mapper allowed 
     obj.relationship = _wrap_with_default_query_class(obj.relationship)
     obj.relation = _wrap_with_default_query_class(obj.relation)
     obj.dynamic_loader = _wrap_with_default_query_class(obj.dynamic_loader)
@@ -91,6 +93,54 @@ class _SignallingSession(Session):
                 return state.db.get_engine(self.app, bind=bind_key)
         return Session.get_bind(self, mapper, clause)
 
+class _SessionSignalEvents(object):
+    
+    def register(self):
+        listen(Session, 'before_commit', self.squll_before_commit)
+        listen(Session, 'after_commit', self.squll_after_commit)
+        listen(Session, 'after_rollback', self.squll_after_rollback)
+
+    @staticmethod
+    def squll_before_commit(session):
+        d = session._model_changes
+        if d:
+            before_models_committed.send(session.app, changes=d.values())
+
+    @staticmethod
+    def squll_after_commit(session):
+        d = session._model_changes
+        if d:
+            models_committed.send(session.app, changes=d.values())
+            d.clear()
+
+    @staticmethod
+    def squll_after_rollback(session):
+        session._model_changes.clear()
+
+class _MapperSignalEvents(object):
+
+    def __init__(self, mapper):
+        self.mapper = mapper
+
+    def register(self):
+        listen(self.mapper, 'after_delete', self.squll_after_delete)
+        listen(self.mapper, 'after_insert', self.squll_after_insert)
+        listen(self.mapper, 'after_update', self.squll_after_update)
+
+    def squll_after_delete(self, mapper, connection, target):
+        self._record(mapper, target, 'delete')
+
+    def squll_after_insert(self, mapper, connection, target):
+        self._record(mapper, target, 'insert')
+
+    def squll_after_update(self, mapper, connection, target):
+        self._record(mapper, target, 'update')
+
+    @staticmethod
+    def _record(mapper, target, operation):
+        pk = tuple(mapper.primary_key_from_instance(target))
+        orm.object_session(target)._model_changes[pk] = (target, operation)
+    
 class _BoundDeclarativeMeta(DeclarativeMeta):
 
     def __new__(cls, name, bases, d):
@@ -124,6 +174,58 @@ def get_state(app):
         'application. Please make sure to call init_app() first.'
     return app.extensions['sqlalchemy']
 
+class Pagination(object):
+
+    def __init__(self, query, page, per_page, total, items):
+        self.query = query
+        self.page = page
+        self.per_page = per_page
+        self.total = total
+        self.items = items
+
+    @property
+    def pages(self):
+        return int(ceil(self.total / float(self.per_page)))
+
+    def prev(self, error_out=False):
+        assert self.query is not None, 'a query object is required ' \
+                                       'for this method to work'
+        return self.query.paginate(self.page - 1, self.per_page, error_out)
+
+    @property
+    def prev_num(self):
+        return self.page - 1
+
+    @property
+    def has_prev(self):
+        return self.page > 1
+
+    def next(self, error_out=False):
+        assert self.query is not None, 'a query object is required ' \
+                                       'for this method to work'
+        return self.query.paginate(self.page + 1, self.per_page, error_out)
+
+    @property
+    def has_next(self):
+        return self.page < self.pages
+
+    @property
+    def next_num(self):
+        return self.page + 1
+
+    def iter_pages(self, left_edge=2, left_current=2,
+                   right_current=5, right_edge=2):
+        last = 0
+        for num in xrange(1, self.pages + 1):
+            if num <= left_edge or \
+               (num > self.page - left_current - 1 and \
+                num < self.page + right_current) or \
+               num > self.pages - right_edge:
+                if last + 1 != num:
+                    yield None
+                yield num
+                last = num
+
 class BaseQuery(orm.Query):
 
     def get_or_404(self, ident):
@@ -138,18 +240,13 @@ class BaseQuery(orm.Query):
             abort(404)
         return rv
 
-    #def paginate(self, page, per_page=20, error_out=True):
-    #    """Returns `per_page` items from page `page`. By default it will
-    #    abort with 404 if no items were found and the page was larger than
-    #    1. This behavor can be disabled by setting `error_out` to `False`.
-    #    Returns an :class:`Pagination` object.
-    #    """
-    #    if error_out and page < 1:
-    #        abort(404)
-    #    items = self.limit(per_page).offset((page - 1) * per_page).all()
-    #    if not items and page != 1 and error_out:
-    #        abort(404)
-    #    return Pagination(self, page, per_page, self.count(), items)
+    def paginate(self, page, per_page=20, error_out=True):
+        if error_out and page < 1:
+            abort(404)
+        items = self.limit(per_page).offset((page - 1) * per_page).all()
+        if not items and page != 1 and error_out:
+            abort(404)
+        return Pagination(self, page, per_page, self.count(), items)
 
 class Model(object):
     """Baseclass for custom user models."""
@@ -239,7 +336,8 @@ class Squll(object):
             self.app = None
 
         _include_sqlalchemy(self)
-
+        _MapperSignalEvents(self.mapper).register()
+        _SessionSignalEvents().register()
         self.Query = BaseQuery
 
     @property
@@ -368,7 +466,7 @@ class Squll(object):
             app and app.config['SQLALCHEMY_DATABASE_URI'] or None
         )
 
-#debug
+#debug\testing aid
 _timer = time
 
 def get_debug_queries():

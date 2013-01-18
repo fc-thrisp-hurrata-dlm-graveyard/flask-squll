@@ -1,1 +1,10 @@
 v0.0 1.17.2013 Initial package
+
+v0.1 1.18.2013
+
+    - Added more tests from orginal flask-sqlalchemy
+
+v0.2 1.18.2013
+
+    - reinstantiated the signalling mapper/session extensions as events
+    - pagination 
