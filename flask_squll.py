@@ -19,7 +19,7 @@ from time import time
 from sqlalchemy.interfaces import ConnectionProxy
 from operator import itemgetter
 from sqlalchemy.event import listen
-from flask import get_template_attribute
+from flask import url_for
 from jinja2 import Template
 
 connection_stack = _app_ctx_stack

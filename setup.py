@@ -8,7 +8,7 @@ from setuptools import setup
 
 setup(
     name='Flask-Squll',
-    version='0.3.1',
+    version='0.3.2',
     url='https://github.com/thrisp/flask-squll',
     license='BSD',
     author='hurrata/thrisp',
