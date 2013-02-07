@@ -4,7 +4,7 @@ import atexit
 import unittest
 from datetime import datetime
 import flask
-from flask_squll import Squll, get_debug_queries#, models_committed, before_models_committed, BaseQuery 
+from flask_squll import Squll, get_debug_queries#, models_committed, before_models_committed, BaseQuery
 import sqlalchemy
 from flask.ext import squll
 
@@ -40,6 +40,9 @@ class BasicAppTestCase(unittest.TestCase):
             db.session.add(todo)
             db.session.commit()
             return 'added'
+        @app.route('/apage/<int:page>')
+        def apage(page):
+            return page
         db.create_all()
         self.app = app
         self.db = db
@@ -380,8 +383,9 @@ class SessionScopingTestCase(unittest.TestCase):
 class PaginationTestCase(unittest.TestCase):
 
     def test_basic_pagination(self):
-        p = squll.Pagination(None, 1, None, 20, 500, [])
+        p = squll.Pagination(None, 1, 'apage', 20, 500, [])
         self.assertEqual(p.page, 1)
+        self.assertEqual(p.endpoint, 'apage')
         self.assertFalse(p.has_prev)
         self.assert_(p.has_next)
         self.assertEqual(p.total, 500)

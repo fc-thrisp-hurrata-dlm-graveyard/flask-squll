@@ -186,7 +186,7 @@ class Pagination(object):
         self.total = total
         self.items = items
 
-    def call_endpoint(self, page):
+    def call_endpoint(self, which_page):
         if self.endpoint:
             return url_for(endpoint=self.endpoint, page=which_page)
         else:
