@@ -45,7 +45,7 @@ def _include_sqlalchemy(obj):
                 setattr(obj, key, getattr(module, key))
     # Note: obj.Table does not attempt to be a SQLAlchemy Table class.
     obj.Table = _make_table(obj)
-    #obj.mapper = sqlalchemy.orm.mapper()#signalling_mapper \\ perhaps some addition to the mapper allowed 
+    #obj.mapper = sqlalchemy.orm.mapper()#signalling_mapper \\ perhaps some addition to the mapper allowed
     obj.relationship = _wrap_with_default_query_class(obj.relationship)
     obj.relation = _wrap_with_default_query_class(obj.relation)
     obj.dynamic_loader = _wrap_with_default_query_class(obj.dynamic_loader)
@@ -96,7 +96,7 @@ class _SignallingSession(Session):
         return Session.get_bind(self, mapper, clause)
 
 class _SessionSignalEvents(object):
-    
+
     def register(self):
         listen(Session, 'before_commit', self.squll_before_commit)
         listen(Session, 'after_commit', self.squll_after_commit)
@@ -142,7 +142,7 @@ class _MapperSignalEvents(object):
     def _record(mapper, target, operation):
         pk = tuple(mapper.primary_key_from_instance(target))
         orm.object_session(target)._model_changes[pk] = (target, operation)
-    
+
 class _BoundDeclarativeMeta(DeclarativeMeta):
 
     def __new__(cls, name, bases, d):
@@ -185,13 +185,13 @@ class Pagination(object):
         self.per_page = per_page
         self.total = total
         self.items = items
-    
+
     def call_endpoint(self, page):
         if self.endpoint:
             return url_for(endpoint=self.endpoint, page=which_page)
         else:
             pass
-        
+
     @property
     def pages(self):
         return int(ceil(self.total / float(self.per_page)))
@@ -255,7 +255,7 @@ class BaseQuery(orm.Query):
         items = self.limit(per_page).offset((page - 1) * per_page).all()
         if not items and page != 1 and error_out:
             abort(404)
-        return Pagination(self, page, endpoint, template, per_page, self.count(), items)
+        return Pagination(self, page, endpoint, per_page, self.count(), items)
 
 class Model(object):
     """Baseclass for custom user models."""
@@ -324,7 +324,7 @@ class _QueryProperty(object):
             return None
 
 class Squll(object):
-   
+
     def __init__(self, app=None,
                  use_native_unicode=True,
                  session_options=None):
@@ -388,7 +388,7 @@ class Squll(object):
         def shutdown_session(response):
             self.session.remove()
             return response
-    
+
     @property
     def engine(self):
         return self.get_engine(self.get_app())
