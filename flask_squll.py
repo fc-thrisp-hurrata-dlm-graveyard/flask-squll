@@ -19,6 +19,8 @@ from time import time
 from sqlalchemy.interfaces import ConnectionProxy
 from operator import itemgetter
 from sqlalchemy.event import listen
+from flask import get_template_attribute
+from jinja2 import Template
 
 connection_stack = _app_ctx_stack
 
@@ -176,13 +178,20 @@ def get_state(app):
 
 class Pagination(object):
 
-    def __init__(self, query, page, per_page, total, items):
+    def __init__(self, query, page, endpoint, per_page, total, items):
         self.query = query
         self.page = page
+        self.endpoint = endpoint
         self.per_page = per_page
         self.total = total
         self.items = items
-
+    
+    def call_endpoint(self, page):
+        if self.endpoint:
+            return url_for(endpoint=self.endpoint, page=which_page)
+        else:
+            pass
+        
     @property
     def pages(self):
         return int(ceil(self.total / float(self.per_page)))
@@ -190,7 +199,7 @@ class Pagination(object):
     def prev(self, error_out=False):
         assert self.query is not None, 'a query object is required ' \
                                        'for this method to work'
-        return self.query.paginate(self.page - 1, self.per_page, error_out)
+        return self.query.paginate(self.page - 1, self.endpoint, self.per_page, error_out)
 
     @property
     def prev_num(self):
@@ -203,7 +212,7 @@ class Pagination(object):
     def next(self, error_out=False):
         assert self.query is not None, 'a query object is required ' \
                                        'for this method to work'
-        return self.query.paginate(self.page + 1, self.per_page, error_out)
+        return self.query.paginate(self.page + 1, self.endpoint, self.per_page, error_out)
 
     @property
     def has_next(self):
@@ -240,13 +249,13 @@ class BaseQuery(orm.Query):
             abort(404)
         return rv
 
-    def paginate(self, page, per_page=20, error_out=True):
+    def paginate(self, page, endpoint=None, per_page=20, error_out=True):
         if error_out and page < 1:
             abort(404)
         items = self.limit(per_page).offset((page - 1) * per_page).all()
         if not items and page != 1 and error_out:
             abort(404)
-        return Pagination(self, page, per_page, self.count(), items)
+        return Pagination(self, page, endpoint, template, per_page, self.count(), items)
 
 class Model(object):
     """Baseclass for custom user models."""

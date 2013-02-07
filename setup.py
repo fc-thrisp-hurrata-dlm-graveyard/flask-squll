@@ -12,13 +12,10 @@ setup(
     url='https://github.com/thrisp/flask-squll',
     license='BSD',
     author='hurrata/thrisp',
-    author_email='blueblank@example.com',
+    author_email='blueblank@gmail.com',
     description='flask + sqlalchemy integration minus legacy for older versions of flask(<0.9)/sqlalchemy(<0.7)',
     long_description=__doc__,
     py_modules=['flask_squll'],
-    # if you would be using a package instead use packages instead
-    # of py_modules:
-    # packages=['flask_sqlite3'],
     zip_safe=False,
     include_package_data=True,
     platforms='any',

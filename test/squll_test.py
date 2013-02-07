@@ -380,7 +380,7 @@ class SessionScopingTestCase(unittest.TestCase):
 class PaginationTestCase(unittest.TestCase):
 
     def test_basic_pagination(self):
-        p = squll.Pagination(None, 1, 20, 500, [])
+        p = squll.Pagination(None, 1, None, 20, 500, [])
         self.assertEqual(p.page, 1)
         self.assertFalse(p.has_prev)
         self.assert_(p.has_next)
