@@ -262,19 +262,19 @@ class DefaultQueryClassTestCase(unittest.TestCase):
         class Parent(db.Model):
             id = db.Column(db.Integer, primary_key=True)
             children = db.relationship(
-                "Child", backref=db.backref("parents"), lazy='dynamic')
-            #children = db.relationship("Child", backref = db.backref("parents", lazy='dynamic'), lazy='dynamic')#breaks
+                "Child", backref="parent", lazy='dynamic')
 
         class Child(db.Model):
             id = db.Column(db.Integer, primary_key=True)
             parent_id = db.Column(db.Integer, db.ForeignKey('parent.id'))
-        p = Parent()
-        c = Child()
-        c.parent = p
+
+        parent = Parent()
+        child = Child()
+        child.parent = parent
+
         self.assertEqual(type(Parent.query), squll.BaseQuery)
         self.assertEqual(type(Child.query), squll.BaseQuery)
-        self.assert_(isinstance(p.children, squll.BaseQuery))
-        self.assert_(isinstance(c.parents, squll.BaseQuery))
+        self.assert_(isinstance(parent.children, squll.BaseQuery))
 
 
 class SQLAlchemyIncludesTestCase(unittest.TestCase):
