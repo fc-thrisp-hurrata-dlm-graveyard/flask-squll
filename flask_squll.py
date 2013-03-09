@@ -1,26 +1,24 @@
 from __future__ import with_statement, absolute_import
-from os import path
+
 import re
+import sys
 from functools import wraps, partial
 from math import ceil
 from operator import itemgetter
 from threading import Lock
-from flask import _app_ctx_stack, abort
-from flask.signals import Namespace
+from time import time
+
 import sqlalchemy
+from flask import _app_ctx_stack, abort, url_for
+from flask.signals import Namespace
 from sqlalchemy import orm
+from sqlalchemy.engine.url import make_url
+from sqlalchemy.event import listen
+from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
+from sqlalchemy.interfaces import ConnectionProxy
 from sqlalchemy.orm.exc import UnmappedClassError
 from sqlalchemy.orm.session import Session
-from sqlalchemy.engine.url import make_url
-from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
-from sqlalchemy.util import to_list
-import sys
-from time import time
-from sqlalchemy.interfaces import ConnectionProxy
-from operator import itemgetter
-from sqlalchemy.event import listen
-from flask import url_for
-from jinja2 import Template
+
 
 connection_stack = _app_ctx_stack
 
