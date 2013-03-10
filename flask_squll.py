@@ -1,26 +1,24 @@
 from __future__ import with_statement, absolute_import
-from os import path
+
 import re
+import sys
 from functools import wraps, partial
 from math import ceil
 from operator import itemgetter
 from threading import Lock
-from flask import _app_ctx_stack, abort
-from flask.signals import Namespace
+from time import time
+
 import sqlalchemy
+from flask import _app_ctx_stack, abort, url_for
+from flask.signals import Namespace
 from sqlalchemy import orm
+from sqlalchemy.engine.url import make_url
+from sqlalchemy.event import listen
+from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
+from sqlalchemy.interfaces import ConnectionProxy
 from sqlalchemy.orm.exc import UnmappedClassError
 from sqlalchemy.orm.session import Session
-from sqlalchemy.engine.url import make_url
-from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
-from sqlalchemy.util import to_list
-import sys
-from time import time
-from sqlalchemy.interfaces import ConnectionProxy
-from operator import itemgetter
-from sqlalchemy.event import listen
-from flask import url_for
-from jinja2 import Template
+
 
 connection_stack = _app_ctx_stack
 
@@ -31,12 +29,14 @@ _signals = Namespace()
 models_committed = _signals.signal('models-committed')
 before_models_committed = _signals.signal('before-models-committed')
 
+
 class _SQLAlchemyState(object):
     """Remembers configuration for the (db, app) tuple."""
     def __init__(self, db, app):
         self.db = db
         self.app = app
         self.connectors = {}
+
 
 def _include_sqlalchemy(obj):
     for module in sqlalchemy, sqlalchemy.orm:
@@ -50,6 +50,7 @@ def _include_sqlalchemy(obj):
     obj.relation = _wrap_with_default_query_class(obj.relation)
     obj.dynamic_loader = _wrap_with_default_query_class(obj.dynamic_loader)
 
+
 def _make_table(db):
     def _make_table(*args, **kwargs):
         if len(args) > 1 and isinstance(args[1], db.Column):
@@ -60,9 +61,11 @@ def _make_table(db):
         return sqlalchemy.Table(*args, **kwargs)
     return _make_table
 
+
 def _set_default_query_class(d):
     if 'query_class' not in d:
         d['query_class'] = BaseQuery
+
 
 def _wrap_with_default_query_class(fn):
     @wraps(fn)
@@ -75,6 +78,7 @@ def _wrap_with_default_query_class(fn):
             _set_default_query_class(backref[1])
         return fn(*args, **kwargs)
     return newfn
+
 
 class _SignallingSession(Session):
     """"""
@@ -94,6 +98,7 @@ class _SignallingSession(Session):
                 state = get_state(self.app)
                 return state.db.get_engine(self.app, bind=bind_key)
         return Session.get_bind(self, mapper, clause)
+
 
 class _SessionSignalEvents(object):
 
@@ -119,6 +124,7 @@ class _SessionSignalEvents(object):
     def squll_after_rollback(session):
         session._model_changes.clear()
 
+
 class _MapperSignalEvents(object):
 
     def __init__(self, mapper):
@@ -143,6 +149,7 @@ class _MapperSignalEvents(object):
         pk = tuple(mapper.primary_key_from_instance(target))
         orm.object_session(target)._model_changes[pk] = (target, operation)
 
+
 class _BoundDeclarativeMeta(DeclarativeMeta):
 
     def __new__(cls, name, bases, d):
@@ -154,7 +161,7 @@ class _BoundDeclarativeMeta(DeclarativeMeta):
         # not use joins. We also don't want a table name if a whole
         # table is defined
         if not tablename and d.get('__table__') is None and \
-           _defines_primary_key(d):
+                _defines_primary_key(d):
             def _join(match):
                 word = match.group()
                 if len(word) > 1:
@@ -170,11 +177,13 @@ class _BoundDeclarativeMeta(DeclarativeMeta):
         if bind_key is not None:
             self.__table__.info['bind_key'] = bind_key
 
+
 def get_state(app):
     assert 'sqlalchemy' in app.extensions, \
         'The sqlalchemy extension was not registered to the current ' \
         'application. Please make sure to call init_app() first.'
     return app.extensions['sqlalchemy']
+
 
 class Pagination(object):
 
@@ -227,13 +236,14 @@ class Pagination(object):
         last = 0
         for num in xrange(1, self.pages + 1):
             if num <= left_edge or \
-               (num > self.page - left_current - 1 and \
-                num < self.page + right_current) or \
-               num > self.pages - right_edge:
+                (num > self.page - left_current - 1 and
+                 num < self.page + right_current) or \
+                    num > self.pages - right_edge:
                 if last + 1 != num:
                     yield None
                 yield num
                 last = num
+
 
 class BaseQuery(orm.Query):
 
@@ -257,6 +267,7 @@ class BaseQuery(orm.Query):
             abort(404)
         return Pagination(self, page, endpoint, per_page, self.count(), items)
 
+
 class Model(object):
     """Baseclass for custom user models."""
 
@@ -267,6 +278,7 @@ class Model(object):
     #: an instance of :attr:`query_class`. Can be used to query the
     #: database for instances of this model.
     query = None
+
 
 class _EngineConnector(object):
 
@@ -305,10 +317,12 @@ class _EngineConnector(object):
             self._connected_for = (uri, echo)
             return rv
 
+
 def _defines_primary_key(d):
     """Figures out if the given dictonary defines a primary key column."""
     return any(v.primary_key for k, v in d.iteritems()
                if isinstance(v, sqlalchemy.Column))
+
 
 class _QueryProperty(object):
     """"""
@@ -323,6 +337,7 @@ class _QueryProperty(object):
         except UnmappedClassError:
             return None
 
+
 class Squll(object):
 
     def __init__(self, app=None,
@@ -332,7 +347,8 @@ class Squll(object):
         if session_options is None:
             session_options = {}
 
-        session_options.setdefault('scopefunc', connection_stack.__ident_func__)
+        session_options.setdefault(
+            'scopefunc', connection_stack.__ident_func__)
 
         self.session = self.create_scoped_session(session_options)
         self.Model = self.make_declarative_base()
@@ -478,8 +494,10 @@ class Squll(object):
 #debug\testing aid
 _timer = time
 
+
 def get_debug_queries():
     return getattr(connection_stack.top, 'sqlalchemy_queries', [])
+
 
 def _record_queries(app):
     if app.debug:
@@ -488,6 +506,7 @@ def _record_queries(app):
     if rq is not None:
         return rq
     return bool(app.config.get('TESTING'))
+
 
 class _ConnectionDebugProxy(ConnectionProxy):
     """Helps debugging the database."""
@@ -511,6 +530,7 @@ class _ConnectionDebugProxy(ConnectionProxy):
                     statement, parameters, start, _timer(),
                     _calling_context(self.app_package))))
 
+
 class _DebugQueryTuple(tuple):
     statement = property(itemgetter(0))
     parameters = property(itemgetter(1))
@@ -528,6 +548,7 @@ class _DebugQueryTuple(tuple):
             self.parameters,
             self.duration
         )
+
 
 def _calling_context(app_path):
     frm = sys._getframe(1)

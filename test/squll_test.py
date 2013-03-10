@@ -1,12 +1,14 @@
 from __future__ import with_statement
-import os
+
 import atexit
 import unittest
 from datetime import datetime
+
 import flask
-from flask_squll import Squll, get_debug_queries#, models_committed, before_models_committed, BaseQuery
-import sqlalchemy
 from flask.ext import squll
+
+from flask_squll import get_debug_queries
+
 
 def make_todo_model(db):
     class Todo(db.Model):
@@ -16,12 +18,14 @@ def make_todo_model(db):
         text = db.Column(db.String)
         done = db.Column(db.Boolean)
         pub_date = db.Column(db.DateTime)
+
         def __init__(self, title, text):
             self.title = title
             self.text = text
             self.done = False
             self.pub_date = datetime.utcnow()
     return Todo
+
 
 class BasicAppTestCase(unittest.TestCase):
     def setUp(self):
@@ -30,9 +34,11 @@ class BasicAppTestCase(unittest.TestCase):
         app.config['TESTING'] = True
         db = squll.Squll(app)
         self.Todo = make_todo_model(db)
+
         @app.route('/')
         def index():
             return '\n'.join(x.title for x in self.Todo.query.all())
+
         @app.route('/add', methods=['POST'])
         def add():
             form = flask.request.form
@@ -40,20 +46,24 @@ class BasicAppTestCase(unittest.TestCase):
             db.session.add(todo)
             db.session.commit()
             return 'added'
+
         @app.route('/apage/<int:page>')
         def apage(page):
             return page
         db.create_all()
         self.app = app
         self.db = db
+
     def tearDown(self):
         self.db.drop_all()
+
     def test_basic_insert(self):
         c = self.app.test_client()
         c.post('/add', data=dict(title='First Item', text='The text'))
         c.post('/add', data=dict(title='2nd Item', text='The text'))
         rv = c.get('/')
         assert rv.data == 'First Item\n2nd Item'
+
     def test_query_recording(self):
         with self.app.test_request_context():
             todo = self.Todo('Test 1', 'test')
@@ -67,8 +77,10 @@ class BasicAppTestCase(unittest.TestCase):
             self.assertEqual(query.parameters[1], 'test')
             self.assert_('squll_test.py' in query.context)
             self.assert_('test_query_recording' in query.context)
+
     def test_helper_api(self):
         self.assertEqual(self.db.metadata, self.db.Model.metadata)
+
 
 class TestQueryProperty(unittest.TestCase):
 
@@ -104,6 +116,7 @@ class TestQueryProperty(unittest.TestCase):
         db.session.commit()
         self.assertEqual(len(Todo.query.all()), 1)
 
+
 class SignallingTestCase(unittest.TestCase):
 
     def setUp(self):
@@ -119,6 +132,7 @@ class SignallingTestCase(unittest.TestCase):
 
     def test_model_signals(self):
         recorded = []
+
         def committed(sender, changes):
             self.assert_(isinstance(changes, list))
             recorded.extend(changes)
@@ -143,6 +157,7 @@ class SignallingTestCase(unittest.TestCase):
             self.assertEqual(recorded[0][0], todo)
             self.assertEqual(recorded[0][1], 'delete')
 
+
 class HelperTestCase(unittest.TestCase):
 
     def test_default_table_name(self):
@@ -152,11 +167,13 @@ class HelperTestCase(unittest.TestCase):
 
         class FOOBar(db.Model):
             id = db.Column(db.Integer, primary_key=True)
+
         class BazBar(db.Model):
             id = db.Column(db.Integer, primary_key=True)
 
         self.assertEqual(FOOBar.__tablename__, 'foo_bar')
         self.assertEqual(BazBar.__tablename__, 'baz_bar')
+
 
 class BindsTestCase(unittest.TestCase):
 
@@ -233,6 +250,7 @@ class BindsTestCase(unittest.TestCase):
             Baz.__table__: db.get_engine(app, None)
         })
 
+
 class DefaultQueryClassTestCase(unittest.TestCase):
 
     def test_default_query_class(self):
@@ -243,18 +261,21 @@ class DefaultQueryClassTestCase(unittest.TestCase):
 
         class Parent(db.Model):
             id = db.Column(db.Integer, primary_key=True)
-            children = db.relationship("Child", backref = db.backref("parents"), lazy='dynamic')
-            #children = db.relationship("Child", backref = db.backref("parents", lazy='dynamic'), lazy='dynamic')#breaks
+            children = db.relationship(
+                "Child", backref="parent", lazy='dynamic')
+
         class Child(db.Model):
             id = db.Column(db.Integer, primary_key=True)
             parent_id = db.Column(db.Integer, db.ForeignKey('parent.id'))
-        p = Parent()
-        c = Child()
-        c.parent = p
+
+        parent = Parent()
+        child = Child()
+        child.parent = parent
+
         self.assertEqual(type(Parent.query), squll.BaseQuery)
         self.assertEqual(type(Child.query), squll.BaseQuery)
-        self.assert_(isinstance(p.children, squll.BaseQuery))
-        self.assert_(isinstance(c.parents, squll.BaseQuery))
+        self.assert_(isinstance(parent.children, squll.BaseQuery))
+
 
 class SQLAlchemyIncludesTestCase(unittest.TestCase):
 
@@ -268,6 +289,7 @@ class SQLAlchemyIncludesTestCase(unittest.TestCase):
         # The Query object we expose is actually our own subclass.
         from flask.ext.squll import BaseQuery
         self.assertTrue(db.Query == BaseQuery)
+
 
 class RegressionTestCase(unittest.TestCase):
 
@@ -342,6 +364,7 @@ class RegressionTestCase(unittest.TestCase):
         db = squll.Squll(app)
         assert db.session.connection()
 
+
 class SessionScopingTestCase(unittest.TestCase):
 
     def test_default_session_scoping(self):
@@ -378,7 +401,8 @@ class SessionScopingTestCase(unittest.TestCase):
         with app.test_request_context():
             fb = FOOBar()
             db.session.add(fb)
-            assert fb not in db.session # because a new scope is generated on each call
+            assert fb not in db.session  # because a new scope is generated on each call
+
 
 class PaginationTestCase(unittest.TestCase):
 
@@ -396,6 +420,7 @@ class PaginationTestCase(unittest.TestCase):
         p.page = 10
         self.assertEqual(list(p.iter_pages()),
                          [1, 2, None, 8, 9, 10, 11, 12, 13, 14, None, 24, 25])
+
 
 def suite():
     #suite.addTest(unittest.makeSuite())
