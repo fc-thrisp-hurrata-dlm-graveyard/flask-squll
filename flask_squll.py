@@ -307,7 +307,7 @@ class _EngineConnector(object):
                 return self._engine
             info = make_url(uri)
             options = {'convert_unicode': True}
-            #self._sa.apply_pool_defaults(self._app, options)
+            self._sa.apply_pool_defaults(self._app, options)
             #self._sa.apply_driver_hacks(self._app, info, options)
             if _record_queries(self._app):
                 options['proxy'] = _ConnectionDebugProxy(self._app.import_name)
@@ -393,6 +393,7 @@ class Squll(object):
         app.config.setdefault('SQLALCHEMY_POOL_SIZE', None)
         app.config.setdefault('SQLALCHEMY_POOL_TIMEOUT', None)
         app.config.setdefault('SQLALCHEMY_POOL_RECYCLE', None)
+        app.config.setdefault('SQLALCHEMY_COMMIT_ON_TEARDOWN', False)
 
         if not hasattr(app, 'extensions'):
             app.extensions = {}
@@ -401,9 +402,21 @@ class Squll(object):
         teardown = app.teardown_appcontext
 
         @teardown
-        def shutdown_session(response):
+        def shutdown_session(response_or_exc):
+            if app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN']:
+                if response_or_exc is None:
+                    self.session.commit()
             self.session.remove()
-            return response
+            return response_or_exc
+
+    def apply_pool_defaults(self, app, options):
+        def _setdefault(optionkey, configkey):
+            value = app.config[configkey]
+            if value is not None:
+                options[optionkey] = value
+        _setdefault('pool_size', 'SQLALCHEMY_POOL_SIZE')
+        _setdefault('pool_timeout', 'SQLALCHEMY_POOL_TIMEOUT')
+        _setdefault('pool_recycle', 'SQLALCHEMY_POOL_RECYCLE')
 
     @property
     def engine(self):
