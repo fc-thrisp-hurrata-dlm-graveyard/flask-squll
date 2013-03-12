@@ -4,4 +4,4 @@ To install the latest version:
 
     pip install flask-squll
 
-Use is paralell to usage of flask-sqlalchemy, using 'squll' and 'Squll' respectively.
+Use is parallel to usage of flask-sqlalchemy, using 'squll' and 'Squll' respectively.
