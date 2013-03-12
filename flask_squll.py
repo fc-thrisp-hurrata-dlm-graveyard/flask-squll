@@ -19,7 +19,6 @@ from sqlalchemy.interfaces import ConnectionProxy
 from sqlalchemy.orm.exc import UnmappedClassError
 from sqlalchemy.orm.session import Session
 
-
 connection_stack = _app_ctx_stack
 
 _camelcase_re = re.compile(r'([A-Z]+)(?=[a-z0-9])')
@@ -265,7 +264,13 @@ class BaseQuery(orm.Query):
         items = self.limit(per_page).offset((page - 1) * per_page).all()
         if not items and page != 1 and error_out:
             abort(404)
-        return Pagination(self, page, endpoint, per_page, self.count(), items)
+
+        if page == 1 and len(items) < per_page:
+            total = len(items)
+        else:
+            total = self.order_by(None).count()
+
+        return Pagination(self, page, endpoint, per_page, total, items)
 
 
 class Model(object):

@@ -1,10 +1,23 @@
-v0.0 1.17.2013 Initial package
+0.0 1.17.2013 Initial package
 
-v0.1 1.18.2013
+0.1 1.18.2013
 
     - Added more tests from orginal flask-sqlalchemy
 
-v0.2 1.18.2013
+0.2 1.18.2013
 
     - reinstantiated the signalling mapper/session extensions as events
-    - pagination 
+    - pagination
+
+0.3.4 2.07.2013
+
+    - updated pagination and attempted some revisions incorporating templating that were removed
+
+0.3.5 3.10.2013
+0.3.6 3.11.2013
+
+    - integrated SQLALCHEMY_COMMIT_ON_TEARDOWN from flask-sqalalchemy
+    - re-added apply_pool_defaults
+    - updated pagination for pages of 1 or less
+    - revised testing and pep8 formatting
+    - revised README
