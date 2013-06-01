@@ -5,10 +5,11 @@ Flask-Squll
 A flask/sqlalchemy integration based on flask-sqlalchemy
 """
 from setuptools import setup
+from flask_squll import __version__
 
 setup(
     name='Flask-Squll',
-    version='0.3.6',
+    version=__version__,
     url='https://github.com/thrisp/flask-squll',
     license='BSD',
     author='hurrata/thrisp',

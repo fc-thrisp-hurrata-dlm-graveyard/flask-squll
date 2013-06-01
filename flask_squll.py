@@ -19,6 +19,8 @@ from sqlalchemy.interfaces import ConnectionProxy
 from sqlalchemy.orm.exc import UnmappedClassError
 from sqlalchemy.orm.session import Session
 
+__version__ = '0.3.7'
+
 connection_stack = _app_ctx_stack
 
 _camelcase_re = re.compile(r'([A-Z]+)(?=[a-z0-9])')
@@ -197,8 +199,6 @@ class Pagination(object):
     def call_endpoint(self, which_page):
         if self.endpoint:
             return url_for(endpoint=self.endpoint, page=which_page)
-        else:
-            pass
 
     @property
     def pages(self):

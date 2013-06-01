@@ -21,3 +21,7 @@
     - updated pagination for pages of 1 or less
     - revised testing and pep8 formatting
     - revised README
+
+0.3.7
+
+    - exportable version info in flask_squll
